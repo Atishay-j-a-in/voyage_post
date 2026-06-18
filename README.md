@@ -83,15 +83,37 @@ app/
 | Next section | `Ctrl + →` |
 | Previous section | `Ctrl + ←` |
 
+
 ## Environment variables
 
+```env
+# Database
+DATABASE_URL=postgresql://...
+
+# Auth (Clerk)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
+CLERK_SECRET_KEY=sk_...
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/loading
+NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/loading
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/loading
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/loading
+
+# Corsair
+CORSAIR_KEK=your-kek-base64
+
+# AI
+OPENAI_API_KEY=...
+OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+
+
+# Inngest
+INNGEST_DEV=1
+
+# App
+APP_URL=http://localhost:3000
 ```
-DATABASE_URL          # PostgreSQL connection string
-CLERK_SECRET_KEY      # Clerk auth secret
-CORSAIR_KEK           # Encryption key for Corsair
-GOOGLE_CLIENT_ID      # Google OAuth client ID
-GOOGLE_CLIENT_SECRET  # Google OAuth client secret
-INGEST_SIGNING_KEY    # Inngest webhook signing key
-```
+
 
 
