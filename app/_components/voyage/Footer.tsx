@@ -18,8 +18,8 @@ export function Footer(): React.ReactElement {
           <a href="#integrations" className="hover:text-white transition-colors duration-300">Integrations</a>
           <a href="#pricing" className="hover:text-white transition-colors duration-300">Pricing</a>
           
-          <a href="#privacy" className="hover:text-white transition-colors duration-300">Privacy</a>
-          <a href="#terms" className="hover:text-white transition-colors duration-300">Terms</a>
+          <a href="/privacy-policy" className="hover:text-white transition-colors duration-300">Privacy Policy</a>
+          <a href="/terms-of-service" className="hover:text-white transition-colors duration-300">Terms of Service</a>
         </nav>
 
         <div className="flex items-center gap-3 text-white/70">
