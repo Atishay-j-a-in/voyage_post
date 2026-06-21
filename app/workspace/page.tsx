@@ -31,7 +31,7 @@ export default async function WorkspacePage(): Promise<React.ReactElement> {
 
   const status = await getIntegrationStatus(userId);
   if (!status.hasBoth) {
-    return <ConnectDialog />;
+    return <ConnectDialog hasGmail={status.hasGmail} hasCalendar={status.hasCalendar} />;
   }
   
 

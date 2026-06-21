@@ -19,6 +19,7 @@ import { SettingsPanel } from "./SettingsPanel";
 import { useSearch } from "@/lib/useSearch";
 import { useContacts } from "@/lib/useContacts";
 import { useCalendarEvents } from "@/lib/useCalendarEvents";
+import { useSyncStatus } from "@/lib/useSyncStatus";
 import type { UserPreferences } from "@/lib/userPreferences";
 import type { MailFolder } from "../_data/mock";
 import type { EmailThread } from "../_data/mock";
@@ -374,6 +375,13 @@ function CalendarTray(): ReactElement {
 
 // --- Summary tray -----------------------------------------------------------
 
+interface NotificationItem {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: string;
+}
+
 function SummaryTray({
   preferences,
   onPreferencesChange,
@@ -384,12 +392,19 @@ function SummaryTray({
   const [summaryTime, setSummaryTime] = useState(preferences.summaryTime ?? "09:00");
   const [emailCount, setEmailCount] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [notifs, setNotifs] = useState<NotificationItem[]>([]);
+  const [notifsLoading, setNotifsLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/emails/stats")
       .then((r) => r.json())
       .then((d) => setEmailCount(d.count ?? 0))
       .catch(() => setEmailCount(0));
+    fetch("/api/notifications")
+      .then((r) => r.json())
+      .then((d) => setNotifs(d.notifications ?? []))
+      .catch(() => {})
+      .finally(() => setNotifsLoading(false));
   }, []);
 
   const handleSave = (): void => {
@@ -454,6 +469,37 @@ function SummaryTray({
         >
           {saving ? "Saving..." : "Save Schedule"}
         </button>
+
+        {/* Past summaries */}
+        <div>
+          <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/40 mb-2">
+            Recent Summaries
+          </p>
+          {notifsLoading && (
+            <div className="px-3 py-4 text-center text-[12px] text-white/40">
+              <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-[var(--accent-neon)]" />
+            </div>
+          )}
+          {!notifsLoading && notifs.length === 0 && (
+            <div className="liquid-glass-bubble-refract rounded-xl px-4 py-5 text-center text-[12.5px] text-white/45">
+              No summaries yet. They arrive daily at your scheduled time.
+            </div>
+          )}
+          <ul className="space-y-2">
+            {notifs.map((n) => (
+              <li
+                key={n.id}
+                className="liquid-glass-bubble-refract rounded-xl px-4 py-3"
+              >
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <p className="text-[12px] font-semibold text-white truncate">{n.title}</p>
+                  <span className="shrink-0 text-[10px] text-white/35">{formatSyncTime(n.createdAt)}</span>
+                </div>
+                <p className="text-[11.5px] text-white/55 whitespace-pre-wrap leading-relaxed">{n.body}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </div>
   );
@@ -464,6 +510,19 @@ function formatTimeLabel(time: string): string {
   const period = h >= 12 ? "PM" : "AM";
   const display = h > 12 ? h - 12 : h === 0 ? 12 : h;
   return `${display}:${m.toString().padStart(2, "0")} ${period}`;
+}
+
+function formatSyncTime(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  return `${diffDay}d ago`;
 }
 
 // --- Key Bindings tray ------------------------------------------------------
@@ -667,6 +726,7 @@ function MailTray({
   mailFolder: MailFolder;
 }): ReactElement {
   const { results: searchResults, loading: searchLoading, query: searchQuery, search, clear: clearSearch } = useSearch();
+  const { status: syncStatus } = useSyncStatus();
   const isSearching = searchQuery.trim().length > 0;
   const [composeOpen, setComposeOpen] = useState(false);
 
@@ -675,7 +735,6 @@ function MailTray({
     : threads.filter((t) => t.folder === mailFolder);
 
   const handleDelete = (id: string): void => {
-    // Move to trash via corsair API
     fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -683,9 +742,34 @@ function MailTray({
     }).catch(() => {});
   };
 
+  const syncLabel = syncStatus?.gmailSync === "syncing"
+    ? "Syncing emails..."
+    : syncStatus?.gmailSync === "success"
+    ? "Synced"
+    : syncStatus?.gmailSync === "failure"
+    ? "Sync failed"
+    : null;
+
   return (
     <div className="flex h-full flex-col">
       <HeaderRow title="Mail" />
+      {syncLabel && (
+        <div className="mx-5 mt-3 flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-[11px] text-white/55">
+          {syncStatus?.gmailSync === "syncing" && (
+            <div className="inline-block h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-white/20 border-t-[var(--accent-neon)]" />
+          )}
+          {syncStatus?.gmailSync === "success" && (
+            <span className="inline-block h-3 w-3 shrink-0 rounded-full bg-[#10b981]" />
+          )}
+          {syncStatus?.gmailSync === "failure" && (
+            <span className="inline-block h-3 w-3 shrink-0 rounded-full bg-red-400" />
+          )}
+          <span>{syncLabel}</span>
+          {syncStatus?.gmailSync === "success" && syncStatus?.gmailSyncedAt && (
+            <span className="ml-auto text-white/35">{formatSyncTime(syncStatus.gmailSyncedAt)}</span>
+          )}
+        </div>
+      )}
       <div className="px-5 pt-4 pb-3">
         <label className="flex h-9 items-center gap-2 rounded-lg border border-white/[0.07] bg-white/[0.03] px-3 text-sm text-white/55 focus-within:border-white/15 focus-within:text-white/80">
           <Search className="h-4 w-4" />

@@ -1,6 +1,9 @@
 import { OpenAIAgentsProvider } from '@corsair-dev/mcp';
 import { Agent, run, tool, setOpenAIAPI, setTracingDisabled } from '@openai/agents';
 import { corsair } from '@/lib/corsair';
+import { db } from '@/db/db';
+import { contactAlias } from '@/db/schema';
+import { ilike } from 'drizzle-orm';
 import { GoogleGenAI } from "@google/genai";
 
 
@@ -68,6 +71,30 @@ export async function ai(userMssg:string, tenantId:string) {
       };
     }
   }
+  const contactsTool = {
+    name: "lookup_contacts",
+    description: "Search the user's saved contact aliases by name. Returns matching contacts with their email addresses. Use this when the user mentions a person's name and you need to find their email to look up their messages or calendar events.",
+    parameters: {
+      type: "object" as const,
+      properties: {
+        name: {
+          type: "string" as const,
+          description: "The name to search for (partial match, case-insensitive)",
+        },
+      },
+      required: ["name"],
+      additionalProperties: false,
+    },
+    execute: async ({ name }: { name: string }) => {
+      const results = await db
+        .select({ name: contactAlias.name, email: contactAlias.emailid })
+        .from(contactAlias)
+        .where(ilike(contactAlias.name, `%${name}%`))
+        .limit(10);
+      return results;
+    },
+  };
+  const allTools = [...tools, contactsTool];
   const agent = new Agent({
     name: 'corsair-agent',
     model: 'gemma-4-31b-it',
@@ -157,7 +184,7 @@ RESPONSE RULES
 - Do not explain tool usage unless the user asks.
 - Do not dump raw JSON unless the user explicitly requests it.
 - Once the requested information has been obtained, provide the final answer immediately.
-- if a user wants to do something with mail but he dont mention any email just a person name then you have to look for the name in contacts .
+- if a user wants to do something with mail but he dont mention any email just a person name then you have to use lookup_contacts to find their email first.
 
 TOOL LOOP PREVENTION
 
@@ -175,7 +202,7 @@ PRIORITY
 4. Concise answers
 5. Completeness
 `,
-    tools,
+    tools: allTools as any,
   });
 
   const stream = await run(agent,userMssg, {stream:true});

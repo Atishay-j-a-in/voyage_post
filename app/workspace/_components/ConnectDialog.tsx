@@ -2,25 +2,23 @@
 
 import { useState, useTransition } from "react";
 import type { ReactElement } from "react";
-import { Mail, CalendarDays, Sparkles, Lock, ChevronRight } from "../../_components/voyage/shared/icons";
+import { Mail, CalendarDays, Sparkles, Lock, ChevronRight, Check } from "../../_components/voyage/shared/icons";
+
+interface ConnectDialogProps {
+  hasGmail: boolean;
+  hasCalendar: boolean;
+}
 
 /**
  * ConnectDialog
  * -------------
- * Shown by /workspace when the freshly-signed-in user has zero
- * rows in `corsair_accounts` for either `gmail` or
- * `googlecalendar`. The user can connect either (or both) by
- * triggering the production OAuth flow documented in
- * `corsair.md`. After either connect, the user can click
- * "Continue" - we re-fetch the page (server component) and the
- * dialog disappears in favour of the workspace.
- *
- * Per the product brief: at least ONE of the two integrations
- * is required. This dialog is only rendered when zero are
- * connected, so the "Skip" link is intentionally absent - the
- * user cannot get to the workspace without connecting one.
+ * Shown by /workspace when the user has not connected both
+ * Gmail and Google Calendar. Both are required to enter the
+ * workspace. Each row shows its connected state — after a
+ * successful OAuth redirect, the page re-renders this component
+ * with the updated flags from user_preferences.
  */
-export function ConnectDialog(): ReactElement {
+export function ConnectDialog({ hasGmail, hasCalendar }: ConnectDialogProps): ReactElement {
   const [pending, startTransition] = useTransition();
   const [busyPlugin, setBusyPlugin] = useState<"gmail" | "googlecalendar" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,10 +39,6 @@ export function ConnectDialog(): ReactElement {
         }
         const data = (await res.json()) as { url?: string };
         if (!data.url) throw new Error("Server did not return a redirect URL");
-        // Hand off to the provider. The cookie carrying the
-        // HMAC-signed state is already set by the server. After
-        // approval Google redirects to /api/corsair/callback
-        // which writes the account row and re-routes here.
         window.location.assign(data.url);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -65,12 +59,11 @@ export function ConnectDialog(): ReactElement {
             Auth Junction
           </span>
           <h1 className="font-semibold tracking-[-0.035em] leading-[1.1] text-white text-[clamp(1.75rem,3.6vw,2.5rem)] text-balance">
-            Connect at least <span className="text-[var(--accent-neon)]">one</span> to dock.
+            Connect <span className="text-[var(--accent-neon)]">both</span> to launch.
           </h1>
           <p className="max-w-md text-white/70 text-sm md:text-base leading-relaxed">
-            Voyage needs a connection to either your Gmail or Google Calendar to
-            start triaging. Pick one - you can add the other any time from the
-            integrations page.
+            Voyage needs access to both your Gmail and Google Calendar to
+            start triaging and planning your day.
           </p>
         </header>
 
@@ -79,6 +72,7 @@ export function ConnectDialog(): ReactElement {
             Icon={Mail}
             title="Connect Gmail"
             subtitle="Summarize, prioritize and reply to threads with AI"
+            connected={hasGmail}
             busy={pending && busyPlugin === "gmail"}
             disabled={pending}
             onClick={() => start("gmail")}
@@ -87,6 +81,7 @@ export function ConnectDialog(): ReactElement {
             Icon={CalendarDays}
             title="Connect Google Calendar"
             subtitle="Schedule, plan and stay on top of your day"
+            connected={hasCalendar}
             busy={pending && busyPlugin === "googlecalendar"}
             disabled={pending}
             onClick={() => start("googlecalendar")}
@@ -115,6 +110,7 @@ function ConnectRow({
   Icon,
   title,
   subtitle,
+  connected,
   busy,
   disabled,
   onClick,
@@ -122,6 +118,7 @@ function ConnectRow({
   Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   title: string;
   subtitle: string;
+  connected: boolean;
   busy: boolean;
   disabled: boolean;
   onClick: () => void;
@@ -130,14 +127,25 @@ function ConnectRow({
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
+      disabled={disabled && !connected}
       className={
         "liquid-glass-bubble-refract group flex items-center gap-4 px-5 py-4 text-left transition-colors duration-300 " +
-        (disabled && !busy ? "opacity-50 cursor-not-allowed" : "hover:bg-white/[0.08]") +
+        (connected
+          ? "border-[var(--accent-neon)]/30 bg-[var(--accent-neon)]/[0.04]"
+          : disabled && !busy
+          ? "opacity-50 cursor-not-allowed"
+          : "hover:bg-white/[0.08]") +
         (busy ? " cursor-progress" : "")
       }
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-[var(--accent-neon)]">
+      <div
+        className={
+          "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border bg-white/[0.04] " +
+          (connected
+            ? "border-[var(--accent-neon)]/40 text-[var(--accent-neon)]"
+            : "border-white/10 text-[var(--accent-neon)]")
+        }
+      >
         <Icon className="h-5 w-5" />
       </div>
       <div className="flex-1 min-w-0">
@@ -146,7 +154,14 @@ function ConnectRow({
         </p>
         <p className="text-white/55 text-xs md:text-[13px] mt-0.5">{subtitle}</p>
       </div>
-      <ChevronRight className="h-4 w-4 text-white/40 group-hover:text-[var(--accent-neon)] transition-colors" />
+      {connected ? (
+        <span className="flex items-center gap-1.5 rounded-full border border-[var(--accent-neon)]/40 bg-[var(--accent-neon)]/10 px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.18em] text-[var(--accent-neon)]">
+          <Check className="h-3 w-3" />
+          Connected
+        </span>
+      ) : (
+        <ChevronRight className="h-4 w-4 text-white/40 group-hover:text-[var(--accent-neon)] transition-colors" />
+      )}
     </button>
   );
 }

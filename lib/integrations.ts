@@ -27,6 +27,8 @@ export const REQUIRED_AT_LEAST_ONE: readonly SupportedPlugin[] = [
 export interface IntegrationStatus {
   /** True when both required plugins are connected. */
   hasBoth: boolean;
+  hasGmail: boolean;
+  hasCalendar: boolean;
 }
 
 /**
@@ -80,5 +82,7 @@ export async function getIntegrationStatus(tenantId: string): Promise<Integratio
   // }).onConflictDoNothing();
   return {
     hasBoth: gmail && googlecalendar,
+    hasGmail: gmail,
+    hasCalendar: googlecalendar,
   };
 }
