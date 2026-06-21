@@ -1,5 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/dist/server/web/spec-extension/response";
+import { NextResponse } from "next/server";
 
 /**
  * Next.js 16 uses `proxy.ts` (not `middleware.ts`) for middleware.
@@ -11,12 +11,17 @@ const isProtectedRoute = createRouteMatcher([
   "/workspace(.*)",
   "/loading",
 ]);
-
+const publicRoutes = createRouteMatcher([
+  "/api/inngest(.*)",
+]);
 const backendRoutes = createRouteMatcher([
   "/api/connect(.*)","/api/auth(.*)","/api/emails(.*)","/api/search(.*)","/api/chat(.*)","/api/calendar(.*)",
   "/api/contacts(.*)","/api/summary(.*)","/api/keys(.*)","/api/subscription(.*)","/api/user-preferences(.*)",
 ])
 export default clerkMiddleware(async (auth, req) => {
+    if (publicRoutes(req)) {
+    return NextResponse.next();
+  }
   const { isAuthenticated } = await auth()
   // Auth.protect() auto-redirects unauthenticated users to the configured
   // sign-in URL (NEXT_PUBLIC_CLERK_SIGN_IN_URL, defaulting to /sign-in).
