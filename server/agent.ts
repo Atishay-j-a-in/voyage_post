@@ -125,12 +125,17 @@ return await corsair.gmail.api.messages.list({ maxResults: 10, q: "newer_than:30
 Get a message by id:
 return await corsair.gmail.api.messages.get({ id: "MESSAGE_ID", format: "metadata", metadataHeaders: ["Subject", "From", "Date"] });
 
-Send an email:
-return await corsair.gmail.api.messages.send({
-  to: "recipient@example.com",
-  subject: "Subject line",
-  body: "Email body text"
-});
+Send an email — IMPORTANT: "raw" must be a base64url-encoded RFC 2822 MIME message. Build it like this:
+const mimeMessage = [
+  "From: me",
+  "To: recipient@example.com",
+  "Subject: Your subject here",
+  "Content-Type: text/plain; charset=utf-8",
+  "",
+  "Your email body here"
+].join("\\r\\n");
+const raw = Buffer.from(mimeMessage).toString("base64").replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/, "");
+return await corsair.gmail.api.messages.send({ raw });
 
 Search messages:
 return await corsair.gmail.api.messages.list({ q: "from:example@example.com", maxResults: 10 });
@@ -138,15 +143,18 @@ return await corsair.gmail.api.messages.list({ q: "from:example@example.com", ma
 CODE PATTERNS — GOOGLE CALENDAR
 
 List events:
-return await corsair.googlecalendar.api.events.list({ timeMin: "2025-01-01T00:00:00Z", timeMax: "2025-01-31T23:59:59Z", maxResults: 10 });
+return await corsair.googlecalendar.api.events.list({ timeMin: "2026-06-01T00:00:00Z", timeMax: "2026-06-30T23:59:59Z", maxResults: 10 });
 
-Create an event:
+Create an event — IMPORTANT: the event object must be wrapped in { event: { ... } }:
 return await corsair.googlecalendar.api.events.create({
-  summary: "Meeting Title",
-  description: "Meeting description",
-  start: { dateTime: "2025-01-15T10:00:00+05:30", timeZone: "Asia/Kolkata" },
-  end: { dateTime: "2025-01-15T11:00:00+05:30", timeZone: "Asia/Kolkata" },
-  attendees: [{ email: "attendee@example.com" }]
+  event: {
+    summary: "Meeting Title",
+    description: "Meeting description",
+    start: { dateTime: "2026-06-29T10:00:00+05:30", timeZone: "Asia/Kolkata" },
+    end: { dateTime: "2026-06-29T11:00:00+05:30", timeZone: "Asia/Kolkata" },
+    attendees: [{ email: "attendee@example.com" }]
+  },
+  sendUpdates: "all"
 });
 
 Get an event:
