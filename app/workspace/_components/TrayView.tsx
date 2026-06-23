@@ -54,6 +54,7 @@ export interface TrayViewProps {
   preferences?: UserPreferences;
   onPreferencesChange?: (next: UserPreferences) => void;
   onSelectSession?: (id: string) => void;
+  onRefreshEmails?: () => void;
 }
 
 const DEFAULT_PREFS: UserPreferences = {
@@ -72,6 +73,7 @@ export function TrayView({
   preferences,
   onPreferencesChange,
   onSelectSession,
+  onRefreshEmails,
 }: TrayViewProps): ReactElement {
   switch (trayId) {
     case "ai":
@@ -83,6 +85,7 @@ export function TrayView({
           selectedId={selectedId ?? ""}
           onSelect={onSelectThread ?? (() => {})}
           mailFolder={mailFolder ?? "inbox"}
+          onRefreshEmails={onRefreshEmails}
         />
       );
     case "calendar":
@@ -120,9 +123,11 @@ function HeaderRow({ title }: { title: string }): ReactElement {
 function ComposeModal({
   open,
   onClose,
+  onSent,
 }: {
   open: boolean;
   onClose: () => void;
+  onSent?: () => void;
 }): ReactElement | null {
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
@@ -157,6 +162,7 @@ function ComposeModal({
         const data = await r.json();
         if (!r.ok) throw new Error(data.error || "Failed to send");
         setResult("Email sent successfully!");
+        onSent?.();
         setTimeout(onClose, 1500);
       })
       .catch((err) => setResult(err.message || "Failed to send email."))
@@ -719,11 +725,13 @@ function MailTray({
   selectedId,
   onSelect,
   mailFolder,
+  onRefreshEmails,
 }: {
   threads: EmailThread[];
   selectedId: string;
   onSelect: (id: string) => void;
   mailFolder: MailFolder;
+  onRefreshEmails?: () => void;
 }): ReactElement {
   const { results: searchResults, loading: searchLoading, query: searchQuery, search, clear: clearSearch } = useSearch();
   const { status: syncStatus } = useSyncStatus();
@@ -888,7 +896,7 @@ function MailTray({
           ))
         )}
       </ul>
-      <ComposeModal open={composeOpen} onClose={() => setComposeOpen(false)} />
+      <ComposeModal open={composeOpen} onClose={() => setComposeOpen(false)} onSent={onRefreshEmails} />
     </div>
   );
 }

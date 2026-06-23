@@ -4,6 +4,7 @@ import { db } from "@/db/db";
 import { chatSessions, chatMessages, subscriptions, aiUsageEvents } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { ai } from "@/server/agent";
+import { inngest } from "@/inngest/client";
 
 /**
  * POST /api/chat
@@ -155,6 +156,9 @@ export async function POST(request: Request): Promise<NextResponse> {
               })
               .where(eq(subscriptions.tenantId, userId));
           }
+
+          // Trigger re-sync so any sent emails appear in the DB
+          await inngest.send({ name: "gmail.initial-sync", data: { tenantId: userId } }).catch(() => {});
         }
 
         controller.enqueue(

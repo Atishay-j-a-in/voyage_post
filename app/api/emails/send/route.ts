@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { corsair } from "@/server/corsair";
+import { inngest } from "@/inngest/client";
 
 /**
  * POST /api/emails/send
@@ -51,6 +52,9 @@ export async function POST(req: Request): Promise<NextResponse> {
     });
 
     console.log("[api/emails/send] Email sent:", result);
+
+    // Trigger re-sync so the sent email appears in the DB
+    await inngest.send({ name: "gmail.initial-sync", data: { tenantId: userId } }).catch(() => {});
 
     return NextResponse.json({ success: true, messageId: result?.id ?? null });
   } catch (error) {

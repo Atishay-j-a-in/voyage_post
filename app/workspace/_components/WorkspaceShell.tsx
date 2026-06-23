@@ -50,7 +50,7 @@ export interface WorkspaceShellProps {
 }
 export function WorkspaceShell({ preferences }: WorkspaceShellProps): ReactElement {
   // Fetch real emails from Corsair DB
-  const { emails: realEmails } = useEmails();
+  const { emails: realEmails, refresh: refreshEmails } = useEmails();
   useSyncStatus(); // polls sync status in background
 
   // Use real emails only — no mock fallback
@@ -282,6 +282,7 @@ export function WorkspaceShell({ preferences }: WorkspaceShellProps): ReactEleme
               setLoadSessionId(id);
               setMainMode("chat");
             }}
+            onRefreshEmails={refreshEmails}
           />
         ) : null}
       </CollapsiblePanel>
